@@ -1,0 +1,221 @@
+{
+  "name": "one-trading-ecosystem",
+  "version": "2.0.0",
+  "description": "Complete Solana Trading Ecosystem with Multi-Agent System, NLC-9 Protocol, and Unified Trading APIs",
+  "main": "dist/index.js",
+  "bin": {
+    "wizbot": "./dist/wizbot.js",
+    "multi-agent": "./dist/multi-agent.js",
+    "trading-api": "./dist/trading-api.js",
+    "market-maker": "./dist/market-maker.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "dev": "concurrently \"npm:dev:*\"",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "// ========== Individual Services ==========": "",
+    "dev:trading-api": "ts-node src/trading-api.ts",
+    "dev:nlc9": "python3 src/nlc9-api.py",
+    "dev:multi-agent": "ts-node src/multi-agent.ts",
+    "dev:wizbot": "ts-node src/wizbot.ts",
+    "dev:market-maker": "ts-node src/market-maker.ts",
+    "// ========== Production Services ==========": "",
+    "start": "npm run start:ecosystem",
+    "start:ecosystem": "concurrently \"npm:start:trading-api\" \"npm:start:nlc9\" \"npm:start:monitoring\"",
+    "start:trading-api": "node dist/trading-api.js",
+    "start:nlc9": "python3 src/nlc9-api.py",
+    "start:multi-agent": "node dist/multi-agent.js",
+    "start:wizbot": "node dist/wizbot.js",
+    "start:market-maker": "node dist/market-maker.js",
+    "start:monitoring": "node dist/monitoring.js",
+    "// ========== Multi-Agent Presets ==========": "",
+    "agent:basic": "ts-node src/multi-agent.ts start --preset BASIC_TRADING_TEAM",
+    "agent:mm": "ts-node src/multi-agent.ts start --preset MARKET_MAKING_SQUAD",
+    "agent:arb": "ts-node src/multi-agent.ts start --preset ARBITRAGE_HUNTERS",
+    "agent:full": "ts-node src/multi-agent.ts start --preset FULL_ECOSYSTEM",
+    "agent:generate": "ts-node src/multi-agent.ts generate-config",
+    "agent:list": "ts-node src/multi-agent.ts list-presets",
+    "// ========== WizBot Commands ==========": "",
+    "wizbot:wallet:create": "ts-node src/wizbot.ts wallet:create",
+    "wizbot:wallet:list": "ts-node src/wizbot.ts wallet:list",
+    "wizbot:distribute": "ts-node src/wizbot.ts distribute",
+    "wizbot:mm:start": "ts-node src/wizbot.ts mm:start",
+    "wizbot:config": "ts-node src/wizbot.ts config:show",
+    "// ========== NLC-9 Protocol ==========": "",
+    "nlc9:server": "python3 src/nlc9-api.py",
+    "nlc9:test": "python3 -m pytest tests/test_nlc9.py",
+    "nlc9:encode": "ts-node src/wizbot.ts nlc9:encode",
+    "nlc9:schemas": "curl http://localhost:8000/schemas",
+    "// ========== Market Maker ==========": "",
+    "mm:start": "ts-node src/market-maker.ts",
+    "mm:simulate": "NLC9_EXECUTE_TRANSACTIONS=false ts-node src/market-maker.ts",
+    "mm:live": "NLC9_EXECUTE_TRANSACTIONS=true ts-node src/market-maker.ts",
+    "// ========== Testing & Quality ==========": "",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --testPathPattern=integration",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "typecheck": "tsc --noEmit",
+    "// ========== Docker & Deployment ==========": "",
+    "docker:build": "docker build -t one-trading-ecosystem .",
+    "docker:run": "docker-compose up",
+    "docker:stop": "docker-compose down",
+    "// ========== Setup & Configuration ==========": "",
+    "setup": "npm run setup:env && npm run setup:wallets && npm run setup:python",
+    "setup:env": "cp .env.example .env",
+    "setup:wallets": "mkdir -p wallets && solana-keygen new -o wallets/main.json --no-bip39-passphrase",
+    "setup:python": "pip3 install -r requirements.txt",
+    "// ========== Monitoring & Logs ==========": "",
+    "logs": "pm2 logs",
+    "logs:trading": "pm2 logs trading-api",
+    "logs:agents": "pm2 logs multi-agent",
+    "monitor": "pm2 monit",
+    "status": "pm2 status",
+    "// ========== PM2 Process Management ==========": "",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop all",
+    "pm2:restart": "pm2 restart all",
+    "pm2:delete": "pm2 delete all"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@meteora-ag/cp-amm-sdk": "^1.0.10",
+    "@solana/spl-token": "^0.3.9",
+    "@solana/web3.js": "^1.87.6",
+    "axios": "^1.6.2",
+    "bn.js": "^5.2.1",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3",
+    "commander": "^11.1.0",
+    "concurrently": "^8.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "inquirer": "^8.2.6",
+    "ioredis": "^5.3.2",
+    "level": "^8.0.0",
+    "lodash": "^4.17.21",
+    "moment": "^2.29.4",
+    "ora": "^5.4.1",
+    "pino": "^8.16.2",
+    "pino-pretty": "^10.2.3",
+    "pm2": "^5.3.0",
+    "redis": "^4.6.10",
+    "ts-node-dev": "^2.0.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/inquirer": "^9.0.7",
+    "@types/jest": "^29.5.10",
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^20.19.11",
+    "@types/supertest": "^2.0.16",
+    "@types/uuid": "^9.0.7",
+    "@types/ws": "^8.5.10",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "eslint-config-prettier": "^9.0.0",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.1.0",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.0",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.6.2",
+    "typescript": "^5.9.2"
+  },
+  "optionalDependencies": {
+    "@sentry/node": "^7.84.0",
+    "newrelic": "^11.6.1",
+    "python-shell": "^5.0.0"
+  },
+  "keywords": [
+    "solana",
+    "trading",
+    "dex",
+    "defi",
+    "multi-agent",
+    "nlc9",
+    "meteora",
+    "amm",
+    "liquidity",
+    "market-maker",
+    "arbitrage",
+    "wallet",
+    "blockchain",
+    "web3",
+    "cryptocurrency",
+    "automated-trading",
+    "trading-bot",
+    "swarm-intelligence",
+    "agent-based-modeling"
+  ],
+  "author": "$ONE Ecosystem Team",
+  "contributors": [
+    {
+      "name": "Mr One",
+      "email": "mrone@oneainetwork.com"
+    }
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0",
+    "python": ">=3.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OneAInetwork/NLC-9"
+  },
+  "bugs": {
+    "url": "https://github.com/OneAInetwork/NLC-9/issues"
+  },
+  "homepage": "https://github.com/OneAInetwork/NLC-9#readme",
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/tests"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.ts",
+      "**/?(*.)+(spec|test).ts"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/**/index.ts"
+    ]
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test"
+    }
+  },
+  "volta": {
+    "node": "20.10.0",
+    "npm": "10.2.5"
+  }
+}

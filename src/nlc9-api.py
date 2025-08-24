@@ -45,13 +45,19 @@ from datetime import datetime, timedelta
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
 
-import aioredis
 import uvicorn
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from starlette.websockets import WebSocketState
+
+# Optional Redis import - only if persistence is enabled
+try:
+    import redis.asyncio as aioredis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
 
 # ============================================
 # CONFIGURATION
@@ -245,7 +251,8 @@ class ParamSpec(BaseModel):
     required: bool = Field(default=True, description="Is parameter required")
     description: Optional[str] = Field(default=None, description="Parameter description")
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def validate_name(cls, v):
         v = v.strip()
         if not v:
@@ -260,7 +267,8 @@ class SchemaRegistration(BaseModel):
     examples: Optional[List[Dict]] = None
     tags: Optional[List[str]] = None
 
-    @validator("params")
+    @field_validator("params")
+    @classmethod
     def max_three_params(cls, v):
         if len(v) > 3:
             raise ValueError("Maximum 3 parameters supported")
@@ -298,12 +306,12 @@ class DecodeRequest(BaseModel):
     base64: Optional[str] = None
     hex: Optional[str] = None
 
-    @root_validator
-    def one_input_required(cls, values):
-        provided = sum(1 for v in [values.get("numbers"), values.get("base64"), values.get("hex")] if v)
+    @model_validator(mode='after')
+    def one_input_required(self):
+        provided = sum(1 for v in [self.numbers, self.base64, self.hex] if v)
         if provided != 1:
             raise ValueError("Provide exactly one of: numbers, base64, hex")
-        return values
+        return self
 
 class DecodeResponse(BaseModel):
     numbers: List[int]
@@ -723,10 +731,11 @@ def register_trading_schemas():
         tags=["trading", "signal"],
     )
     
-    # Trade execution schema
-    SCHEMAS[(VERBS["EXEC"], OBJECTS.get("TRADE", token_id("trade")))] = SchemaRegistration(
+    # Trade execution schema (fix TRADE object reference)
+    trade_obj_id = OBJECTS.get("ORDER", token_id("trade"))  # Use ORDER instead of TRADE
+    SCHEMAS[(VERBS["EXEC"], trade_obj_id)] = SchemaRegistration(
         verb="EXEC",
-        object="TRADE",
+        object="ORDER",  # Changed from TRADE to ORDER
         params=[
             ParamSpec(name="pool_id", type="id"),
             ParamSpec(name="amount", type="amount", min_value=0),
@@ -736,8 +745,9 @@ def register_trading_schemas():
         tags=["trading", "execution"],
     )
     
-    # Swarm coordination schema
-    SCHEMAS[(VERBS.get("COORD", token_id("coord")), OBJECTS["SWARM"])] = SchemaRegistration(
+    # Swarm coordination schema (fix COORD verb reference)
+    coord_verb_id = VERBS.get("COORD", token_id("coord"))
+    SCHEMAS[(coord_verb_id, OBJECTS["SWARM"])] = SchemaRegistration(
         verb="COORD",
         object="SWARM",
         params=[
@@ -803,15 +813,26 @@ codec = NLC9Codec()
 @app.on_event("startup")
 async def startup_event():
     register_trading_schemas()
-    if config.ENABLE_PERSISTENCE:
+    if config.ENABLE_PERSISTENCE and REDIS_AVAILABLE:
         # Initialize Redis connection if persistence enabled
-        app.state.redis = await aioredis.create_redis_pool(config.REDIS_URL)
+        try:
+            app.state.redis = await aioredis.from_url(
+                config.REDIS_URL,
+                encoding="utf-8",
+                decode_responses=True
+            )
+            await app.state.redis.ping()
+            print(f"Redis connected: {config.REDIS_URL}")
+        except Exception as e:
+            print(f"Redis connection failed: {e}")
+            app.state.redis = None
+    elif config.ENABLE_PERSISTENCE and not REDIS_AVAILABLE:
+        print("Warning: Persistence enabled but redis not installed. Install with: pip install redis")
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    if hasattr(app.state, "redis"):
-        app.state.redis.close()
-        await app.state.redis.wait_closed()
+    if hasattr(app.state, "redis") and app.state.redis:
+        await app.state.redis.close()
 
 # ============================================
 # HTTP ENDPOINTS
@@ -879,18 +900,19 @@ def get_objects(category: Optional[str] = None):
     return {"objects": OBJECTS}
 
 @app.post("/encode", response_model=EncodeResponse)
-def encode_message(req: EncodeRequest):
+async def encode_message(req: EncodeRequest):
     """Encode message to NLC-9 format."""
     try:
         nums, header = codec.build_message(req)
         b = pack9(nums)
         
         # Store message if persistence enabled
-        if config.ENABLE_PERSISTENCE and hasattr(app.state, "redis"):
+        if config.ENABLE_PERSISTENCE and hasattr(app.state, "redis") and app.state.redis:
             message_id = f"msg:{header['verb']}:{header['object']}:{nums[7]}"
-            asyncio.create_task(
-                app.state.redis.setex(message_id, req.ttl or 3600, b)
-            )
+            try:
+                await app.state.redis.setex(message_id, req.ttl or 3600, b.hex())
+            except Exception as e:
+                print(f"Redis storage error: {e}")
         
         return EncodeResponse(
             numbers=nums,
@@ -1256,7 +1278,7 @@ def execute_trade(
     """Execute trade order."""
     req = EncodeRequest(
         verb="EXEC",
-        object="TRADE",
+        object="ORDER",  # Fixed: use ORDER instead of TRADE
         params={
             "pool_id": pool_id,
             "amount": amount,
@@ -1302,7 +1324,7 @@ def get_trading_schemas():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "nlc9-api:app",  # Changed to match the filename
         host=os.getenv("NLC9_HOST", "0.0.0.0"),
         port=int(os.getenv("NLC9_PORT", "8000")),
         reload=config.DEBUG_MODE,

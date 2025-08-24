@@ -120,7 +120,124 @@ curl -X POST localhost:8000/decode -H 'content-type: application/json' -d '{
 }'
 ```
 
+# 1. Install dependencies
+npm i
+pip3 install -r requirements.txt
+mkdir -p solana
 
+# 2. Create main wallet (make sure backup your wallet)
+solana-keygen new -o solana/main.json
+
+# check public key to fund
+node keypair.js
+
+
+# 3. Configure environment
+cp .env.example .env
+
+# Edit .env with your settings
+replace solana rpc with Helius rpc url
+adjust settings
+
+# Setup environment
+npm run setup
+
+# Start development environment
+npm run dev
+
+# Or start production
+npm run pm2:start
+
+
+🎯 Quick Start Commands
+
+bash# Development - Start everything
+npm run dev
+
+# Production - Using PM2
+npm run pm2:start
+
+
+npm run dev:trading-api
+npm run dev:nlc9
+
+#see options
+npm run dev:multi-agent
+
+npm run dev:wizbot 
+npm run dev:market-maker
+    
+
+#run all
+
+npm run build
+npm run start
+
+    "start:trading-api": "node dist/trading-api.js",
+    "start:nlc9": "python3 src/nlc9-api.py",
+    "start:multi-agent": "node dist/multi-agent.js",
+    "start:wizbot": "node dist/wizbot.js",
+    "start:market-maker": "node dist/market-maker.js",
+    "start:monitoring": "node dist/monitoring.js",
+
+# Individual Services
+npm run start:trading-api   # Trading API only
+npm run start:nlc9          # NLC-9 server only
+npm run agent:full          # Full agent swarm
+npm run mm:live            # Live market maker
+
+
+# Testing
+npm test                    # Run all tests
+npm run test:coverage      # With coverage
+npm run lint:fix           # Fix linting issues
+
+
+
+Example 3: Multi-Wallet Trading Strategy
+bash# Create 10 trading wallets
+
+
+ts-node src/wizbot.ts wallet create 5
+ts-node src/wizbot.ts transfer --from main --to 1 2 --sol 0.025 --split
+ts-node src/wizbot.ts transfer --from main --to 1 2 --usdc 8 --split
+
+ts-node src/market-maker.ts start --wallet 1 &
+
+
+
+
+# Distribute initial capital
+wizbot transfer --from main --to 2 --sol 0.02 --usdc 20 --split
+
+
+### NLC-9 Protocol Commands
+
+```bash
+# Encode a command
+wizbot nlc9:encode \
+  --verb EXEC \
+  --object TASK \
+  --params '{"task_id": "trade_1", "priority": 5}'
+
+# The NLC-9 protocol automatically encodes all market maker commands
+```
+
+
+
+
+# Each wallet gets:
+# - 0.5 SOL (5 / 10)
+# - 1000 USDC (10000 / 10)
+
+# Start market makers on different wallets
+wizbot mm:start --wallet 1 &
+wizbot mm:start --wallet 2 &
+wizbot mm:start --wallet 3 &
+
+
+
+===
 Why NLC-9?
 ====
 
@@ -294,3 +411,29 @@ ws.send(JSON.stringify({
         token_id: 'SOL/USDC'
     }
 }));
+
+
+
+
+
+
+npm run dev           # Start everything in dev mode
+npm run agent:full    # Start full agent ecosystem
+npm run mm:live       # Start live market maker
+npm run nlc9:server   # Start NLC-9 server
+npm run wizbot:mm:start # Start MM via WizBot
+
+Testing & Quality
+
+Comprehensive test setup with Jest
+Coverage reporting
+Linting with auto-fix
+Pre-commit hooks with Husky
+
+
+Docker & Deployment Ready
+
+Docker commands included
+PM2 ecosystem configuration
+Setup scripts for quick start
+
