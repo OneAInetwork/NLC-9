@@ -132,3 +132,165 @@ It is not just a protocol—it is the circulatory system of the One AI Network, 
 
 
 
+
+
+
+
+
+🚀 New Features
+
+Extended Verb & Object Registry:
+
+Trading verbs: SIGNAL, TRADE, HEDGE, CLOSE, CANCEL
+Coordination verbs: COORD, VOTE, SYNC, ELECT, DELEGATE
+Trading objects: MARKET, POOL, WALLET, POSITION, ORDER
+Multi-agent objects: SWARM, STRATEGY, CONSENSUS, LEADER, FOLLOWER
+
+
+Advanced Schema System:
+
+New parameter types: amount, percent, address, timestamp
+Validation with min/max constraints
+Schema tagging for categorization
+Auto-registration of trading schemas
+
+
+Message Routing & Broadcasting:
+
+Pub/sub channels for agents
+Message queuing with TTL
+Priority-based message handling
+Rate limiting per client
+
+
+Consensus Voting System:
+
+Submit votes for actions
+Automatic consensus checking
+Configurable thresholds
+Vote aggregation
+
+
+WebSocket Enhancements:
+
+Dedicated agent endpoints (/ws/agent/{agent_id})
+Channel subscriptions
+Heartbeat mechanism
+Auto-reconnection support
+
+
+Trading-Specific Endpoints:
+
+/trading/signal - Send market signals
+/trading/execute - Execute trades
+/trading/schemas - Get trading schemas
+
+
+Performance & Monitoring:
+
+Metrics tracking endpoint
+Connection statistics
+Message throughput monitoring
+Rate limiting with sliding window
+
+
+
+📊 Key Improvements
+
+Optimized Encoding:
+python# Percent stored as basis points (0.01% precision)
+# Amount stored with 6 decimal precision
+# Automatic scale conversion for floats
+
+Enhanced Message Structure:
+pythonMessage(
+    id: unique_identifier,
+    priority: 0-10,
+    ttl: time_to_live,
+    sender: agent_id,
+    recipients: set_of_targets
+)
+
+Consensus Example:
+python# Agents vote on emergency exit
+POST /consensus/vote
+{
+    "action_id": "EMERGENCY_EXIT",
+    "voter_id": "Agent-1",
+    "vote": {"action": "exit", "reason": "market_crash"}
+}
+
+# Check consensus (auto-triggers at 60% threshold)
+GET /consensus/EMERGENCY_EXIT
+
+Trading Signal Flow:
+python# Leader sends signal
+POST /trading/signal
+{
+    "signal_type": "BUY",
+    "token": "SOL/USDC",
+    "strength": 0.85,
+    "confidence": 0.92
+}
+
+# Broadcasts to all agents via WebSocket
+# Followers receive and can auto-execute
+
+Agent WebSocket Connection:
+python# Agent connects with dedicated endpoint
+ws://localhost:8000/ws/agent/Leader-1
+
+# Auto-subscribes to:
+# - "agents" channel (all agents)
+# - "agent:Leader-1" channel (personal)
+
+# Receives queued messages automatically
+# Heartbeat keeps connection alive
+
+
+🔧 Usage Examples
+Start the enhanced NLC-9 server:
+bash# With default settings
+python main.py
+
+# With custom configuration
+NLC9_HOST=0.0.0.0 \
+NLC9_PORT=8000 \
+NLC9_ENABLE_PERSISTENCE=true \
+NLC9_REDIS_URL=redis://localhost:6379 \
+NLC9_DEBUG=true \
+python main.py
+Send a trading signal:
+bashcurl -X POST "http://localhost:8000/trading/signal" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "signal_type": "BUY",
+    "token": "SOL/USDC",
+    "strength": 0.85,
+    "confidence": 0.92,
+    "metadata": {"reason": "bullish_pattern"}
+  }'
+Agent subscribes via WebSocket:
+javascriptconst ws = new WebSocket('ws://localhost:8000/ws/agent/Agent-1');
+
+ws.onopen = () => {
+    // Agent connected, auto-subscribed to channels
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'message') {
+        // Process incoming NLC-9 message
+        console.log('Received:', data.message.decoded);
+    }
+};
+
+// Send signal
+ws.send(JSON.stringify({
+    type: 'signal',
+    params: {
+        strength: 0.8,
+        confidence: 0.9,
+        token_id: 'SOL/USDC'
+    }
+}));
